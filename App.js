@@ -1,15 +1,38 @@
-import { StyleSheet, Text, SafeAreaView } from "react-native";
+import { View, Image, StyleSheet, Text, SafeAreaView, FlatList, Pressable, TouchableOpacity } from "react-native";
 import { useState, useEffect } from "react";
 import { ResponseType, useAuthRequest } from "expo-auth-session";
 import { myTopTracks, albumTracks } from "./utils/apiOptions";
 import { REDIRECT_URI, SCOPES, CLIENT_ID, ALBUM_ID } from "./utils/constants";
+import millisToMinutesAndSeconds from "./utils/millisToMinuteSeconds"
 import Colors from "./Themes/colors"
+import images from "./Themes/images";
 
 // Endpoints for authorizing with Spotify
 const discovery = {
   authorizationEndpoint: "https://accounts.spotify.com/authorize",
   tokenEndpoint: "https://accounts.spotify.com/api/token"
 };
+
+const Song = ({ number, imageURL, name, artists, album, duration }) => (
+  <View style={styles.song}>
+    <View>
+      <Text style={{ color: Colors.gray }} numberOfLines={1}>{number}</Text>
+    </View>
+    <View style={styles.songItem}>
+      <Image source={{uri: imageURL}} style={{ height: 60, width: 60 }}></Image>
+    </View>
+    <View style={[{ flex: 1 }, styles.songItem]}>
+      <Text style={{ color: "white" }} numberOfLines={1}>{name}</Text>
+      <Text style={{ color: Colors.gray }} numberOfLines={1}>{artists}</Text>
+    </View>
+    <View style={[{ flex: 1 }, styles.songItem]}>
+      <Text style={{ color: "white" }} numberOfLines={1}>{album}</Text>
+    </View>
+    <View style={styles.songItem}>
+      <Text style={{ color: "white" }} numberOfLines={1}>{duration}</Text>
+    </View>
+  </View>
+);
 
 export default function App() {
   const [token, setToken] = useState("");
@@ -26,6 +49,19 @@ export default function App() {
     },
     discovery
   );
+
+  const renderItem = ({ item, index }) => (
+    <Song 
+      number={index + 1} 
+      imageURL={item.album.images[2].url}
+      name={item.name} 
+      artists={
+        item.artists.map(a => a.name).join(", ")
+      }
+      album={item.album.name}
+      duration={millisToMinutesAndSeconds(item.duration_ms)}
+      />
+  )
 
   useEffect(() => {
     if (response?.type === "success") {
@@ -50,10 +86,34 @@ export default function App() {
     }
   }, [token]);
 
+  let contentDisplayed = null;
+
+  if (token) {
+    contentDisplayed = (
+      <View style={{width: "100%"}}>
+        <View style={styles.header}>
+          <Image style={{ width: 20, height: 20, marginRight: 10 }} source={images.spotify}></Image>
+          <Text style={{color: "white", fontWeight: "bold", fontSize: 20}}>My Top Tracks</Text>
+        </View>
+        <FlatList
+          data={tracks}
+          renderItem={renderItem}
+        >
+        </FlatList>
+      </View>
+    )
+  } else {
+    contentDisplayed = (
+      <TouchableOpacity style={styles.spotifyButton} onPress={promptAsync}>
+        <Image style={{ width: 20, height: 20, marginRight: 5 }} source={images.spotify}></Image>
+        <Text style={{ color: "white" }}>CONNECT WITH SPOTIFY</Text>
+      </TouchableOpacity>
+    )
+  }
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* TODO */}
-      <Text style={{ color: "white" }}>Welcome to Assignment 3 - Spotify</Text>
+      {contentDisplayed}
     </SafeAreaView>
   );
 }
@@ -63,6 +123,35 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
     justifyContent: "center",
     alignItems: "center",
-    flex: 1
+    flex: 1,
+  },
+  spotifyButton: {
+    color: "white",
+    backgroundColor: Colors.spotify,
+    padding: 10,
+    borderRadius: 99999,
+    display: "flex",
+    flexDirection: "row"
+  },
+  header: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 40,
+    paddingBottom: 10
+
+  },
+  song: {
+    display: "flex",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 20,
+    paddingRight: 20,
+    paddingBottom: 5,
+    paddingTop: 5
+  },
+  songItem: {
+    marginLeft: 12
   }
 });
