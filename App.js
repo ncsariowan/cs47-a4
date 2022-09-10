@@ -6,6 +6,9 @@ import { REDIRECT_URI, SCOPES, CLIENT_ID, ALBUM_ID } from "./utils/constants";
 import millisToMinutesAndSeconds from "./utils/millisToMinuteSeconds"
 import Colors from "./Themes/colors"
 import images from "./Themes/images";
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { WebView } from "react-native-webview";
+import { createStackNavigator } from '@react-navigation/stack';
 
 // Endpoints for authorizing with Spotify
 const discovery = {
@@ -16,10 +19,12 @@ const discovery = {
 const Song = ({ number, imageURL, name, artists, album, duration }) => (
   <View style={styles.song}>
     <View>
-      <Text style={{ color: Colors.gray }} numberOfLines={1}>{number}</Text>
+      <Pressable>
+        <Ionicons name="play-circle" size={24} color={Colors.spotify} />
+      </Pressable>
     </View>
     <View style={styles.songItem}>
-      <Image source={{uri: imageURL}} style={{ height: 60, width: 60 }}></Image>
+      <Image source={{ uri: imageURL }} style={{ height: 60, width: 60 }}></Image>
     </View>
     <View style={[{ flex: 1 }, styles.songItem]}>
       <Text style={{ color: "white" }} numberOfLines={1}>{name}</Text>
@@ -51,16 +56,16 @@ export default function App() {
   );
 
   const renderItem = ({ item, index }) => (
-    <Song 
-      number={index + 1} 
+    <Song
+      number={index + 1}
       imageURL={item.album.images[2].url}
-      name={item.name} 
+      name={item.name}
       artists={
         item.artists.map(a => a.name).join(", ")
       }
       album={item.album.name}
       duration={millisToMinutesAndSeconds(item.duration_ms)}
-      />
+    />
   )
 
   useEffect(() => {
@@ -88,12 +93,12 @@ export default function App() {
 
   let contentDisplayed = null;
 
-  if (token) {
-    contentDisplayed = (
-      <View style={{width: "100%"}}>
+  const SongList = ({ navigation }) => {
+    return (
+      <View style={{ width: "100%" }}>
         <View style={styles.header}>
           <Image style={{ width: 20, height: 20, marginRight: 10 }} source={images.spotify}></Image>
-          <Text style={{color: "white", fontWeight: "bold", fontSize: 20}}>My Top Tracks</Text>
+          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>My Top Tracks</Text>
         </View>
         <FlatList
           data={tracks}
@@ -101,6 +106,19 @@ export default function App() {
         >
         </FlatList>
       </View>
+    )
+  }
+
+  const Stack = createStackNavigator();
+
+  if (token) {
+    contentDisplayed = (
+      <Stack.Navigator>
+        <Stack.Screen
+          name="SongList"
+          component={SongList}
+        />
+      </Stack.Navigator>
     )
   } else {
     contentDisplayed = (
