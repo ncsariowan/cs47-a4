@@ -1,4 +1,5 @@
-import { View, Image, StyleSheet, Text, SafeAreaView, FlatList, Pressable, TouchableOpacity } from "react-native";
+import { View, Image, StyleSheet, Text, FlatList, Pressable, TouchableOpacity } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useEffect } from "react";
 import { ResponseType, useAuthRequest } from "expo-auth-session";
 import { myTopTracks, albumTracks } from "./utils/apiOptions";
@@ -8,6 +9,7 @@ import Colors from "./Themes/colors"
 import images from "./Themes/images";
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { WebView } from "react-native-webview";
+import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 
 // Endpoints for authorizing with Spotify
@@ -16,10 +18,10 @@ const discovery = {
   tokenEndpoint: "https://accounts.spotify.com/api/token"
 };
 
-const Song = ({ number, imageURL, name, artists, album, duration }) => (
-  <View style={styles.song}>
+const Song = ({ number, imageURL, name, artists, album, duration, url, previewUrl, navigation }) => (
+  <Pressable style={styles.song} onPress={() => navigation.navigate('Song Detail', {url: url})}>
     <View>
-      <Pressable>
+      <Pressable onPress={() => navigation.navigate('Song Detail', {url: previewUrl})}>
         <Ionicons name="play-circle" size={24} color={Colors.spotify} />
       </Pressable>
     </View>
@@ -36,7 +38,7 @@ const Song = ({ number, imageURL, name, artists, album, duration }) => (
     <View style={styles.songItem}>
       <Text style={{ color: "white" }} numberOfLines={1}>{duration}</Text>
     </View>
-  </View>
+  </Pressable>
 );
 
 export default function App() {
@@ -55,7 +57,7 @@ export default function App() {
     discovery
   );
 
-  const renderItem = ({ item, index }) => (
+  const renderItem = (navigation, index, item) => (
     <Song
       number={index + 1}
       imageURL={item.album.images[2].url}
@@ -65,6 +67,9 @@ export default function App() {
       }
       album={item.album.name}
       duration={millisToMinutesAndSeconds(item.duration_ms)}
+      navigation={navigation}
+      url={item.external_urls.spotify}
+      previewUrl={item.preview_url}
     />
   )
 
@@ -93,19 +98,29 @@ export default function App() {
 
   let contentDisplayed = null;
 
-  const SongList = ({ navigation }) => {
+  function SongList({ navigation }) {
     return (
-      <View style={{ width: "100%" }}>
-        <View style={styles.header}>
-          <Image style={{ width: 20, height: 20, marginRight: 10 }} source={images.spotify}></Image>
-          <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>My Top Tracks</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={{ width: "100%" }}>
+          <View style={styles.header}>
+            <Image style={{ width: 20, height: 20, marginRight: 10 }} source={images.spotify}></Image>
+            <Text style={{ color: "white", fontWeight: "bold", fontSize: 20 }}>My Top Tracks</Text>
+          </View>
+          <FlatList
+            data={tracks}
+            renderItem={({ index, item }) => renderItem(navigation, index, item)}
+            style={{ paddingBottom: 40 }}
+          >
+          </FlatList>
         </View>
-        <FlatList
-          data={tracks}
-          renderItem={renderItem}
-        >
-        </FlatList>
-      </View>
+      </SafeAreaView>
+    );
+  }
+
+  function SpotifyWebview({ navigation, route }) {
+    const {url} = route.params;
+    return (
+      <WebView source={{uri: url}} style={{width: "100%", height: "100%"}}/>
     )
   }
 
@@ -113,26 +128,40 @@ export default function App() {
 
   if (token) {
     contentDisplayed = (
-      <Stack.Navigator>
-        <Stack.Screen
-          name="SongList"
-          component={SongList}
-        />
-      </Stack.Navigator>
+      <NavigationContainer>
+        <Stack.Navigator>
+          <Stack.Screen
+            name="Song List"
+            component={SongList}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Song Detail"
+            component={SpotifyWebview}
+            options={{
+              headerTitleStyle: {color: "white"},
+              cardStyle: { backgroundColor: Colors.background},
+              headerStyle: { backgroundColor: Colors.background, shadowOffset: {height: 0}}
+            }}
+          />
+        </Stack.Navigator>
+      </NavigationContainer>
     )
   } else {
     contentDisplayed = (
-      <TouchableOpacity style={styles.spotifyButton} onPress={promptAsync}>
-        <Image style={{ width: 20, height: 20, marginRight: 5 }} source={images.spotify}></Image>
-        <Text style={{ color: "white" }}>CONNECT WITH SPOTIFY</Text>
-      </TouchableOpacity>
+      <SafeAreaView style={styles.container}>
+        <TouchableOpacity style={styles.spotifyButton} onPress={promptAsync}>
+          <Image style={{ width: 20, height: 20, marginRight: 5 }} source={images.spotify}></Image>
+          <Text style={{ color: "white" }}>CONNECT WITH SPOTIFY</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
     )
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaProvider>
       {contentDisplayed}
-    </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 
